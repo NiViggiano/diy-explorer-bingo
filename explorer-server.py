@@ -98,13 +98,17 @@ class Server_Game(Game):
         conn, (host, port) = sock.accept()
         conn.setblocking(True)
         print(f"Accepted connection from {host}")
-        if (r := recv_single_as_int(conn)) is None:
+        replacement_msg = None
+        if (spectate := recv_single_as_int(conn)) is None:
             return
-        if (g := recv_single_as_int(conn)) is None:
-            return
-        if (b := recv_single_as_int(conn)) is None:
-            return
-        replacement_msg = self.new_player(host, (r, g, b))
+        elif not spectate:
+            if (r := recv_single_as_int(conn)) is None:
+                return
+            if (g := recv_single_as_int(conn)) is None:
+                return
+            if (b := recv_single_as_int(conn)) is None:
+                return
+            replacement_msg = self.new_player(host, (r, g, b))
         data = SimpleNamespace(addr=host, outb=b"")
         wrapped_send(conn, data, self.size.to_bytes(1, "little") + self.pack_goals() + self.pack_board())
         conn.setblocking(False)
@@ -178,7 +182,6 @@ def main():
     listener.listen()
     listener.setblocking(False)
     SEL.register(listener, selectors.EVENT_READ, data=None)
-    # goals = list(range(len(GOAL_LIST)))
     random.shuffle(goal_indices)
 
     game = Server_Game(board_size, goal_indices[: board_size * board_size])
@@ -199,6 +202,9 @@ def main():
         except KeyboardInterrupt:
             SEL.close()
             break
+        except ConnectionResetError:
+            # Server shouldn't crash if someone disconnects weirdly
+            pass
 
 
 if __name__ == "__main__":

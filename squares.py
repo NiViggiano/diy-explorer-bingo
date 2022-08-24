@@ -139,17 +139,21 @@ class Game:
 
 
 class Game_Model(Game):
-    def __init__(self, board_size):
+    def __init__(self, board_size, all_visible=False):
         super().__init__(board_size)
         self.squares = [_Square_Model(board_size, i) for i in range(board_size * board_size)]
-        self.squares[self.middle].visible = Visibility.ALWAYS
-        if board_size % 2:
-            for idx in self.adjacent_indices(self.middle):
-                self.squares[idx].visible = Visibility.ALWAYS
+        if all_visible:
+            for square in self.squares:
+                square.visible = Visibility.ALWAYS
         else:
-            self.squares[self.middle - 1].visible = Visibility.ALWAYS
-            self.squares[self.middle + board_size].visible = Visibility.ALWAYS
-            self.squares[self.middle + board_size - 1].visible = Visibility.ALWAYS
+            self.squares[self.middle].visible = Visibility.ALWAYS
+            if board_size % 2:
+                for idx in self.adjacent_indices(self.middle):
+                    self.squares[idx].visible = Visibility.ALWAYS
+            else:
+                self.squares[self.middle - 1].visible = Visibility.ALWAYS
+                self.squares[self.middle + board_size].visible = Visibility.ALWAYS
+                self.squares[self.middle + board_size - 1].visible = Visibility.ALWAYS
 
     def __repr__(self):
         ret = "\n".join([repr(square) for square in self.squares])
@@ -182,7 +186,7 @@ class Game_Model(Game):
 
 
 class Game_View(Game):
-    def __init__(self, board_size, canvas, goal_indices, goal_list):
+    def __init__(self, board_size, canvas, goal_indices, goal_list, all_visible=False):
         super().__init__(board_size)
         self.canvas = canvas
         self.square_width = canvas.width / board_size
@@ -193,14 +197,18 @@ class Game_View(Game):
             )
             for i in range(board_size * board_size)
         ]
-        self.squares[self.middle].make_visible()
-        if board_size % 2:
-            for idx in self.adjacent_indices(self.middle):
-                self.squares[idx].make_visible()
+        if all_visible:
+            for square in self.squares:
+                square.make_visible()
         else:
-            self.squares[self.middle - 1].make_visible()
-            self.squares[self.middle + board_size].make_visible()
-            self.squares[self.middle + board_size - 1].make_visible()
+            self.squares[self.middle].make_visible()
+            if board_size % 2:
+                for idx in self.adjacent_indices(self.middle):
+                    self.squares[idx].make_visible()
+            else:
+                self.squares[self.middle - 1].make_visible()
+                self.squares[self.middle + board_size].make_visible()
+                self.squares[self.middle + board_size - 1].make_visible()
 
     def left(self, idx):
         return (idx % self.size) * self.square_width
@@ -219,15 +227,18 @@ class Game_View(Game):
 
 
 class Game_Controller(Game):
-    def __init__(self, board_size, color, goal_indices, goal_list, board_width, board_height):
+    def __init__(self, board_size, color, goal_indices, goal_list, board_width, board_height, all_visible=False):
         super().__init__(board_size)
         self.root = Tk()
         self.color = color
         self.canvas = Canvas(self.root, width=board_width, height=board_height)
         self.canvas.width = board_width
         self.canvas.height = board_height
-        self.model: Game_Model = Game_Model(board_size)
-        self.view: Game_View = Game_View(board_size, self.canvas, goal_indices, goal_list)
+        self.goal_indices = goal_indices
+        self.goal_list = goal_list
+        self.all_visible = all_visible
+        self.model: Game_Model = Game_Model(board_size, all_visible)
+        self.view: Game_View = Game_View(board_size, self.canvas, goal_indices, goal_list, all_visible)
         self.canvas.pack()
         self.root.bind("<Button-1>", self.mouse_pressed)
 

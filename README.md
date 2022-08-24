@@ -18,4 +18,4 @@ Based on, and meant to work with, [BingoSync by kbuzsaki](https://github.com/kbu
 
 ### Client
 * In a terminal, run `python <filepath>/explorer-client.py -h`; if this doesn't work, the command may be either `python3` or `py`. 
-* You will receive an explanation of the current command line arguments accepted. Currently, `python explorer-server.py <public server IP> <public server port>` are the required arguments, with options to input a screen resolution for the board as well as an RGB value for marking goals (default is determined randomly). 
+* You will receive an explanation of the current command line arguments accepted. Currently, `python explorer-server.py <public server IP> <public server port>` are the required arguments, with options for screen resolution, player color, spectate mode, and verbose mode.

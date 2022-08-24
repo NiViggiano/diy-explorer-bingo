@@ -19,10 +19,15 @@ def recv_single_as_int(sock: socket.socket):
 
 
 class Socket_Game(Game_Controller):
-    def __init__(self, board_size, color, goal_indices, goal_list, board_width, board_height):
-        super().__init__(board_size, color, goal_indices, goal_list, board_width, board_height)
+    def __init__(
+        self, board_size, color, goal_indices, goal_list, board_width, board_height, spectate=False, verbose=False
+    ):
+        super().__init__(board_size, color, goal_indices, goal_list, board_width, board_height, spectate)
         self.outb = b""
         self.delay = 100  # TODO hardcode this? put this elsewhere?
+        self.verbose = verbose
+        if spectate:
+            self.root.unbind("<Button-1>")
 
     def run(self):
         self.check_for_updates()
@@ -54,6 +59,8 @@ class Socket_Game(Game_Controller):
         idx = marked_square[0]
         (R, G, B) = struct.unpack_from("!3B", marked_square, 1)
         self.mark(idx, (R, G, B))
+        if self.verbose:
+            print("%i %i %i has marked %s" % (R, G, B, self.goal_list[self.goal_indices[idx]]))
         return True
 
     def write_square(self, sock):
@@ -87,6 +94,12 @@ def parse():
     parser.add_argument("port", type=int, help="server port to connect to (make sure they forwarded it!)")
     parser.add_argument("-r", "--resolution", nargs=2, type=int, help="size to make board (width then height)")
     parser.add_argument("-c", "--color", nargs=3, type=int, help="R G B value of color for player")
+    parser.add_argument(
+        "-s", "--spectate", action="store_true", help="set this flag if you want to spectate instead of play"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="set this flag to receive a message every time a goal is marked"
+    )
     return parser.parse_args()
 
 
@@ -107,8 +120,13 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Block until initial data is sent and received
     sock.connect(server_addr)
-    # Send color first so server can deal with reconnection
-    sock.sendall(struct.pack("!3B", R, G, B))
+    # First tell the server if we're a player
+    if args.spectate:
+        sock.sendall((1).to_bytes(1, "little"))
+    else:
+        # We're a player, send our color so the server can deal with reconnection
+        sock.sendall((0).to_bytes(1, "little"))
+        sock.sendall(struct.pack("!3B", R, G, B))
     board_size = recv_single_as_int(sock)
     if board_size is None:
         return
@@ -121,7 +139,7 @@ def main():
         goal_list = sorted(
             [goals[key]["Desc"] for key in goals if isinstance(goals[key], dict) and goals[key].get("Desc")]
         )
-    game = Socket_Game(board_size, (R, G, B), goal_indices, goal_list, width, height)
+    game = Socket_Game(board_size, (R, G, B), goal_indices, goal_list, width, height, args.spectate, args.verbose)
     if not game.mark_init_squares(sock):
         SEL.unregister(sock)
         sock.close()
